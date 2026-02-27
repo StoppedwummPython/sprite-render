@@ -1,0 +1,52 @@
+name: Update JavaBase Extension
+
+on:
+  schedule:
+    # Runs at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-dependency:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download latest app.jar from external repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Downloads app.jar from the latest release of Stoppedwumm/JavaBase
+          gh release download -R Stoppedwumm/JavaBase -p "app.jar" --clobber
+
+      - name: Replace JavaBase.jar
+        run: |
+          # Ensure the target directory exists
+          mkdir -p app/extensions/
+          
+          # Remove the old file if it exists
+          rm -f app/extensions/JavaBase.jar
+          
+          # Move and rename the downloaded app.jar to the target location
+          mv app.jar app/extensions/JavaBase.jar
+
+      - name: Commit and Push changes
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Stage the file
+          git add app/extensions/JavaBase.jar
+          
+          # Commit and push only if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes detected. JavaBase.jar is already up to date."
+          else
+            git commit -m "chore: update JavaBase.jar from latest release"
+            git push
+          fi
